@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FortiGate",
+        "description": "Use a REST API administrator token (System → Administrators). Minimum scope: read access to System and Network for monitoring; read-write on interface objects if you enable interface switches in options.",
+        "data": {
+          "host": "Hostname or IP address",
+          "port": "HTTPS port (default 443; custom admin port e.g. 8443 is common)",
+          "access_token": "API token (shown once when the API admin is created)",
+          "vdom": "VDOM name (use root for single-VDOM appliances)",
+          "api_prefix": "API path version (v2 for FortiOS 5.6+)",
+          "verify_ssl": "Verify TLS certificate"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the FortiGate (host, port, firewall, or TLS).",
+      "invalid_auth": "Authentication failed. Check the token and that the admin profile allows REST read access.",
+      "api_error": "The FortiGate responded but the payload was unexpected (wrong VDOM, firmware, or API path).",
+      "unknown": "Unexpected error, see Home Assistant logs."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FortiGate options",
+        "description": "Interfaces are discovered from the firewall. \"All\" skips common internal FortiOS names (ssl.*, naf.*). Use \"Only selected\" to limit entities. Enabling administrative switches can disconnect your network or management access.",
+        "data": {
+          "scan_interval": "Poll interval (seconds)",
+          "interface_mode": "Which interfaces get sensors, binary sensors, and optional switches",
+          "tracked_interfaces": "Interfaces to include when \"Only selected\" is chosen",
+          "enable_interface_switches": "Expose CMDB switches to bring interfaces administratively up/down (requires write permission)",
+          "enable_sdwan_sensor": "Poll SD-WAN health endpoint (no extra entities if SD-WAN is not configured)"
+        }
+      }
+    },
+    "error": {
+      "no_interfaces_selected": "Choose at least one interface when using \"Only selected\", or switch back to \"All\"."
+    }
+  }
+}

@@ -1,0 +1,62 @@
+"""Shared helpers for FortiGate integration."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+
+from .const import (
+    CONF_INTERFACE_MODE,
+    CONF_SCAN_INTERVAL,
+    CONF_TRACKED_INTERFACES,
+    DEFAULT_OPTIONS,
+    INTERFACE_MODE_ALL,
+    INTERFACE_MODE_SELECTED,
+    INTERFACE_NAME_PREFIX_DENYLIST,
+)
+
+
+def merge_entry_options(entry: ConfigEntry) -> dict[str, Any]:
+    """Merge config entry options with defaults."""
+    return {**DEFAULT_OPTIONS, **(entry.options or {})}
+
+
+def normalize_interface_results(raw: Any) -> dict[str, dict[str, Any]]:
+    """Return interface name -> payload from monitor/system/interface ``results``."""
+    if isinstance(raw, dict):
+        return {str(k): (v if isinstance(v, dict) else {}) for k, v in raw.items()}
+    if isinstance(raw, list):
+        out: dict[str, dict[str, Any]] = {}
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name") or item.get("interface")
+            if name:
+                out[str(name)] = item
+        return out
+    return {}
+
+
+def interface_allowed_in_all_mode(name: str) -> bool:
+    if not name:
+        return False
+    lower = name.lower()
+    if lower == "modem":
+        return False
+    return not any(lower.startswith(p) for p in INTERFACE_NAME_PREFIX_DENYLIST)
+
+
+def interfaces_in_scope(
+    results: dict[str, dict[str, Any]], options: dict[str, Any]
+) -> list[str]:
+    """Ordered list of interface names to expose as entities."""
+    mode = options.get(CONF_INTERFACE_MODE, INTERFACE_MODE_ALL)
+    names = sorted(results.keys(), key=str.lower)
+    if mode == INTERFACE_MODE_ALL:
+        return [n for n in names if interface_allowed_in_all_mode(n)]
+    selected = options.get(CONF_TRACKED_INTERFACES) or []
+    if not isinstance(selected, list):
+        selected = [selected]
+    selected_set = {str(s) for s in selected}
+    return [n for n in names if n in selected_set]
