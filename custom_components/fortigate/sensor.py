@@ -43,7 +43,7 @@ async def async_setup_entry(
         FortigateCpuSensor(coordinator, entry, base_uid),
         FortigateMemorySensor(coordinator, entry, base_uid),
         FortigateSessionsSensor(coordinator, entry, base_uid),
-        FortigateNpuSessionsSensor(coordinator, entry, base_uid),
+        FortigateSpuSessionsSensor(coordinator, entry, base_uid),
         FortigateNturboSessionsSensor(coordinator, entry, base_uid),
     ]
 
@@ -218,12 +218,13 @@ class FortigateSessionsSensor(FortigateEntity, SensorEntity):
         return int(cur) if cur is not None else None
 
 
-class FortigateNpuSessionsSensor(FortigateEntity, SensorEntity):
-    """NPU / hardware offload session count (if reported by firmware)."""
+class FortigateSpuSessionsSensor(FortigateEntity, SensorEntity):
+    """SPU session offload usage from resource monitor (FortiOS `npu_session`; value is a percentage)."""
 
     entity_description = SensorEntityDescription(
-        key="npu_sessions",
-        name="NPU SESSIONS",
+        key="spu_sessions",
+        name="SPU SESSIONS",
+        native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -232,11 +233,11 @@ class FortigateNpuSessionsSensor(FortigateEntity, SensorEntity):
         self, coordinator: FortigateCoordinator, entry: ConfigEntry, base_uid: str
     ) -> None:
         super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{base_uid}_npu_sessions"
-        self._attr_suggested_display_precision = 0
+        self._attr_unique_id = f"{base_uid}_spu_sessions"
+        self._attr_suggested_display_precision = 2
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> float | None:
         if not self.coordinator.data:
             return None
         res = self.coordinator.data.get("resources", {}).get("results") or {}
@@ -244,15 +245,21 @@ class FortigateNpuSessionsSensor(FortigateEntity, SensorEntity):
         if not npu:
             return None
         cur = npu[0].get("current")
-        return int(cur) if cur is not None else None
+        if cur is None:
+            return None
+        try:
+            return round(float(cur), 2)
+        except (TypeError, ValueError):
+            return None
 
 
 class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
-    """nTurbo session count (if reported by firmware)."""
+    """nTurbo session offload usage from resource monitor (percentage)."""
 
     entity_description = SensorEntityDescription(
         key="nturbo_sessions",
         name="NTURBO SESSIONS",
+        native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -262,10 +269,10 @@ class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{base_uid}_nturbo_sessions"
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = 2
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> float | None:
         if not self.coordinator.data:
             return None
         res = self.coordinator.data.get("resources", {}).get("results") or {}
@@ -273,7 +280,12 @@ class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
         if not nt:
             return None
         cur = nt[0].get("current")
-        return int(cur) if cur is not None else None
+        if cur is None:
+            return None
+        try:
+            return round(float(cur), 2)
+        except (TypeError, ValueError):
+            return None
 
 
 class FortigateSdwanNumericSensor(FortigateEntity, SensorEntity):
