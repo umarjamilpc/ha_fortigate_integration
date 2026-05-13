@@ -17,7 +17,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_ENABLE_SDWAN_SENSOR, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
-from .helpers import merge_entry_options, pick_sdwan_block_for_interface, sdwan_get_field
+from .helpers import (
+    merge_entry_options,
+    pick_sdwan_block_for_interface,
+    sdwan_get_field,
+    sdwan_primary_status_text,
+    sdwan_safe_attributes,
+)
 from .naming import if_entity_label
 
 # (internal_field, display metric name uppercase, unit, decimals)
@@ -368,21 +374,12 @@ class FortigateInterfaceSdwanStatusSensor(FortigateEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         block = self.coordinator.get_sdwan_member_block(self._member_slug)
-        if not block:
-            return None
-        st = sdwan_get_field(block, "status", "state")
-        return str(st) if st is not None else "ok"
+        return sdwan_primary_status_text(block)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         block = self.coordinator.get_sdwan_member_block(self._member_slug)
-        if not block:
-            return {}
-        out: dict[str, Any] = {}
-        for k, v in block.items():
-            if isinstance(v, (str, int, float, bool)) or v is None:
-                out[str(k)] = v
-        return out
+        return sdwan_safe_attributes(block)
 
 
 class FortigateInterfaceMbpsSensor(FortigateEntity, SensorEntity):

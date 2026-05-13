@@ -22,6 +22,66 @@ def merge_entry_options(entry: ConfigEntry) -> dict[str, Any]:
     return {**DEFAULT_OPTIONS, **(entry.options or {})}
 
 
+_UP_WORDS = frozenset(
+    {"up", "on", "enable", "enabled", "true", "1", "yes", "connected", "ok", "alive"}
+)
+_DOWN_WORDS = frozenset(
+    {
+        "down",
+        "off",
+        "disable",
+        "disabled",
+        "false",
+        "0",
+        "no",
+        "disconnected",
+        "disc",
+        "dead",
+    }
+)
+
+
+def interface_monitor_admin_up(
+    payload: dict[str, Any] | None, *, assume_up_if_absent: bool = False
+) -> bool | None:
+    """Parse monitor/system/interface payload for admin / line-protocol up (FortiOS varies by version).
+
+    When *assume_up_if_absent* is True (CMDB switch), missing/ambiguous monitor fields default to up,
+    matching historic FortiOS behaviour where ``status`` is often omitted while the interface is up.
+    """
+    if not isinstance(payload, dict) or not payload:
+        return None
+    status_raw = payload.get("status")
+    if status_raw is not None and status_raw != "":
+        if isinstance(status_raw, bool):
+            return status_raw
+        if isinstance(status_raw, (int, float)):
+            return bool(int(status_raw))
+        s = str(status_raw).strip().lower()
+        if s in _UP_WORDS:
+            return True
+        if s in _DOWN_WORDS or s == "error":
+            return False
+        if s:
+            return None
+    up_raw = payload.get("up")
+    if isinstance(up_raw, bool):
+        return up_raw
+    if isinstance(up_raw, (int, float)):
+        return bool(int(up_raw))
+    for alt in ("interface-up", "ipv4-up", "ipv6-up"):
+        v = payload.get(alt)
+        if v is None:
+            continue
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, (int, float)):
+            return bool(int(v))
+        if isinstance(v, str) and v.strip():
+            return v.strip().lower() in _UP_WORDS
+    return True if assume_up_if_absent else None
+
+
 def normalize_interface_results(raw: Any) -> dict[str, dict[str, Any]]:
     """Return interface name -> payload from monitor/system/interface ``results``."""
     if isinstance(raw, dict):
@@ -130,7 +190,9 @@ def pick_sdwan_block_for_interface(
         if ikey not in parts:
             continue
         score = 0
-        if parts and parts[-1] == ikey:
+        if len(parts) >= 2 and parts[0] == ikey and parts[-1] == ikey:
+            score = 4
+        elif parts and parts[-1] == ikey:
             score = 2
         elif parts and parts[0] == ikey:
             score = 1
@@ -149,3 +211,37 @@ def sdwan_get_field(block: dict[str, Any], *field_names: str) -> Any:
             if key in block:
                 return block[key]
     return None
+
+
+def sdwan_primary_status_text(block: dict[str, Any] | None) -> str | None:
+    """Human-readable SD-WAN health status for sensor state (handles nested FortiOS shapes)."""
+    if not isinstance(block, dict) or not block:
+        return None
+    st = sdwan_get_field(block, "status", "state")
+    if st is None:
+        return "ok"
+    if isinstance(st, dict):
+        for k in ("status", "state", "code", "keyword", "name", "level"):
+            v = st.get(k)
+            if isinstance(v, (str, int, float, bool)) or v is None:
+                if v is not None:
+                    return str(v)
+        return "unknown"
+    if isinstance(st, (list, tuple)):
+        return ", ".join(str(x) for x in st)[:250] or "unknown"
+    return str(st)
+
+
+def sdwan_safe_attributes(block: dict[str, Any] | None) -> dict[str, Any]:
+    """Flatten SD-WAN leaf for HA attributes (no nested dict/list values)."""
+    if not isinstance(block, dict) or not block:
+        return {}
+    out: dict[str, Any] = {}
+    for k, v in block.items():
+        if isinstance(v, (str, int, float, bool)) or v is None:
+            out[str(k)] = v
+        elif isinstance(v, (list, tuple)):
+            out[str(k)] = ", ".join(str(x) for x in v)[:4000]
+        else:
+            out[str(k)] = str(v)[:4000]
+    return out

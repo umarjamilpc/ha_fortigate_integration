@@ -16,7 +16,7 @@ from .api import FortigateApiError, FortigateAuthError, FortigateConnectionError
 from .const import CONF_ENABLE_INTERFACE_SWITCHES, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
-from .helpers import merge_entry_options
+from .helpers import interface_monitor_admin_up, merge_entry_options
 from .naming import if_entity_label
 
 
@@ -64,10 +64,7 @@ class FortigateInterfaceAdminSwitch(FortigateEntity, SwitchEntity):
 
     @staticmethod
     def _read_admin_up(payload: dict[str, Any] | None) -> bool | None:
-        if not payload:
-            return None
-        status = (payload.get("status") or "up").lower()
-        return status == "up"
+        return interface_monitor_admin_up(payload, assume_up_if_absent=True)
 
     @property
     def is_on(self) -> bool | None:

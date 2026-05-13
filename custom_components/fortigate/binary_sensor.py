@@ -15,6 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
+from .helpers import interface_monitor_admin_up
 from .naming import if_entity_label
 
 
@@ -96,9 +97,4 @@ class FortigateInterfaceStatusBinary(FortigateEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         payload = self.coordinator.get_interface_payload(self._interface_name)
-        if not payload:
-            return None
-        status = (payload.get("status") or "").lower()
-        if not status:
-            return None
-        return status == "up"
+        return interface_monitor_admin_up(payload)
