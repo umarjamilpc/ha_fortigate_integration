@@ -18,12 +18,13 @@ from .const import CONF_ENABLE_SDWAN_SENSOR, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
 from .helpers import merge_entry_options, sdwan_get_field
+from .naming import iface_uc, sdwan_entity_name
 
-# (internal_field, title fragment, unit, decimals)
+# (internal_field, display metric name uppercase, unit, decimals)
 SDWAN_NUMERIC_SPECS: tuple[tuple[str, str, str | None, int], ...] = (
-    ("latency", "latency", "ms", 2),
-    ("jitter", "jitter", "ms", 2),
-    ("packet_loss", "packet loss", PERCENTAGE, 2),
+    ("latency", "LATENCY", "ms", 2),
+    ("jitter", "JITTER", "ms", 2),
+    ("packet_loss", "PACKET LOSS", PERCENTAGE, 2),
     ("sla", "SLA", None, 0),
 )
 
@@ -50,12 +51,12 @@ async def async_setup_entry(
         slug = iface_slug(if_name)
         entities.append(
             FortigateInterfaceMbpsSensor(
-                coordinator, entry, base_uid, if_name, slug, "rx_mbps", "RX Mbps"
+                coordinator, entry, base_uid, if_name, slug, "rx_mbps"
             )
         )
         entities.append(
             FortigateInterfaceMbpsSensor(
-                coordinator, entry, base_uid, if_name, slug, "tx_mbps", "TX Mbps"
+                coordinator, entry, base_uid, if_name, slug, "tx_mbps"
             )
         )
 
@@ -64,7 +65,7 @@ async def async_setup_entry(
         for member_slug, block in members.items():
             if not isinstance(block, dict):
                 continue
-            for field_key, title_frag, unit, decimals in SDWAN_NUMERIC_SPECS:
+            for field_key, metric_uc, unit, decimals in SDWAN_NUMERIC_SPECS:
                 if field_key == "packet_loss":
                     raw = sdwan_get_field(block, "packet_loss", "packet-loss")
                     uid_field = "packet_loss"
@@ -86,7 +87,7 @@ async def async_setup_entry(
                         member_slug,
                         uid_field,
                         lookup_names,
-                        title_frag,
+                        metric_uc,
                         unit,
                         decimals,
                     )
@@ -103,7 +104,7 @@ class FortigateFirmwareSensor(FortigateEntity, SensorEntity):
 
     entity_description = SensorEntityDescription(
         key="firmware",
-        name="Firmware",
+        name="FIRMWARE",
         entity_category=EntityCategory.DIAGNOSTIC,
     )
 
@@ -139,7 +140,7 @@ class FortigateCpuSensor(FortigateEntity, SensorEntity):
 
     entity_description = SensorEntityDescription(
         key="cpu_usage",
-        name="CPU usage",
+        name="CPU USAGE",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
     )
@@ -166,7 +167,7 @@ class FortigateMemorySensor(FortigateEntity, SensorEntity):
 
     entity_description = SensorEntityDescription(
         key="memory_usage",
-        name="Memory usage",
+        name="MEMORY USAGE",
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
     )
@@ -193,7 +194,7 @@ class FortigateSessionsSensor(FortigateEntity, SensorEntity):
 
     entity_description = SensorEntityDescription(
         key="sessions",
-        name="Sessions",
+        name="SESSIONS",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -222,7 +223,7 @@ class FortigateNpuSessionsSensor(FortigateEntity, SensorEntity):
 
     entity_description = SensorEntityDescription(
         key="npu_sessions",
-        name="NPU sessions",
+        name="NPU SESSIONS",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -251,7 +252,7 @@ class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
 
     entity_description = SensorEntityDescription(
         key="nturbo_sessions",
-        name="nTurbo sessions",
+        name="NTURBO SESSIONS",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -290,7 +291,7 @@ class FortigateSdwanNumericSensor(FortigateEntity, SensorEntity):
         member_slug: str,
         uid_field: str,
         lookup_names: tuple[str, ...],
-        title_fragment: str,
+        metric_uc: str,
         unit: str | None,
         decimals: int,
     ) -> None:
@@ -299,7 +300,7 @@ class FortigateSdwanNumericSensor(FortigateEntity, SensorEntity):
         self._lookup_names = lookup_names
         self._decimals = decimals
         self._attr_unique_id = f"{base_uid}_sdwan_{member_slug}_{uid_field.replace('-', '_')}"
-        self._attr_name = f"SD-WAN {member_slug} {title_fragment}"
+        self._attr_name = sdwan_entity_name(member_slug, metric_uc)
         self._attr_native_unit_of_measurement = unit
         if decimals:
             self._attr_suggested_display_precision = decimals
@@ -335,7 +336,7 @@ class FortigateSdwanRawSensor(FortigateEntity, SensorEntity):
         super().__init__(coordinator, entry)
         self._member_slug = member_slug
         self._attr_unique_id = f"{base_uid}_sdwan_{member_slug}_raw"
-        self._attr_name = f"SD-WAN {member_slug} data"
+        self._attr_name = sdwan_entity_name(member_slug, "DETAILS")
 
     @property
     def native_value(self) -> str | None:
@@ -374,13 +375,13 @@ class FortigateInterfaceMbpsSensor(FortigateEntity, SensorEntity):
         interface_name: str,
         interface_slug: str,
         rate_key: str,
-        short_label: str,
     ) -> None:
         super().__init__(coordinator, entry)
         self._interface_name = interface_name
         self._rate_key = rate_key
         self._attr_unique_id = f"{base_uid}_if_{interface_slug}_{rate_key}"
-        self._attr_name = f"{interface_name} {short_label}"
+        suffix = "RX MBPS" if rate_key == "rx_mbps" else "TX MBPS"
+        self._attr_name = f"{iface_uc(interface_name)} — {suffix}"
 
     @property
     def native_value(self) -> float | None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
@@ -15,6 +17,7 @@ from .const import CONF_ENABLE_INTERFACE_SWITCHES, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
 from .helpers import merge_entry_options
+from .naming import iface_uc
 
 
 async def async_setup_entry(
@@ -41,6 +44,8 @@ class FortigateInterfaceAdminSwitch(FortigateEntity, SwitchEntity):
     """Administrative up/down (CMDB status) — can disconnect management; use with care."""
 
     _attr_has_entity_name = False
+    PENDING_TIMEOUT_SEC = 12.0
+    _REFRESH_GAP_SEC = (0.75, 1.25)
 
     def __init__(
         self,
@@ -53,15 +58,29 @@ class FortigateInterfaceAdminSwitch(FortigateEntity, SwitchEntity):
         super().__init__(coordinator, entry)
         self._interface_name = interface_name
         self._attr_unique_id = f"{base_uid}_if_{interface_slug}_admin"
-        self._attr_name = f"{interface_name} administrative status"
+        self._attr_name = f"{iface_uc(interface_name)} — ADMIN"
+        self._pending_target: bool | None = None
+        self._pending_set_at: float = 0.0
 
-    @property
-    def is_on(self) -> bool | None:
-        payload = self.coordinator.get_interface_payload(self._interface_name)
+    @staticmethod
+    def _read_admin_up(payload: dict[str, Any] | None) -> bool | None:
         if not payload:
             return None
         status = (payload.get("status") or "up").lower()
         return status == "up"
+
+    @property
+    def is_on(self) -> bool | None:
+        payload = self.coordinator.get_interface_payload(self._interface_name)
+        actual = self._read_admin_up(payload)
+        if self._pending_target is not None:
+            if actual is not None and actual == self._pending_target:
+                self._pending_target = None
+            elif (time.monotonic() - self._pending_set_at) < self.PENDING_TIMEOUT_SEC:
+                return self._pending_target
+            else:
+                self._pending_target = None
+        return actual
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._set(True)
@@ -70,14 +89,30 @@ class FortigateInterfaceAdminSwitch(FortigateEntity, SwitchEntity):
         await self._set(False)
 
     async def _set(self, up: bool) -> None:
+        self._pending_target = up
+        self._pending_set_at = time.monotonic()
+        self.async_write_ha_state()
         try:
             await self.coordinator.client.set_interface_admin_status(
                 self._interface_name, up
             )
         except FortigateAuthError as err:
-            raise HomeAssistantError("FortiGate rejected credentials or permissions") from err
+            self._pending_target = None
+            self.async_write_ha_state()
+            raise HomeAssistantError(
+                "FortiGate rejected credentials or permissions"
+            ) from err
         except FortigateConnectionError as err:
+            self._pending_target = None
+            self.async_write_ha_state()
             raise HomeAssistantError(f"Connection failed: {err}") from err
         except FortigateApiError as err:
+            self._pending_target = None
+            self.async_write_ha_state()
             raise HomeAssistantError(str(err)) from err
-        await self.coordinator.async_request_refresh()
+
+        # CMDB updates before monitor; stagger refreshes so UI matches FortiOS.
+        for gap in self._REFRESH_GAP_SEC:
+            await asyncio.sleep(gap)
+            await self.coordinator.async_request_refresh()
+        self.async_write_ha_state()

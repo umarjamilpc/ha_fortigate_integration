@@ -15,6 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
+from .naming import iface_uc
 
 
 async def async_setup_entry(
@@ -54,7 +55,7 @@ class FortigateInterfaceLinkBinary(FortigateEntity, BinarySensorEntity):
         super().__init__(coordinator, entry)
         self._interface_name = interface_name
         self._attr_unique_id = f"{base_uid}_if_{interface_slug}_link"
-        self._attr_name = f"{interface_name} link"
+        self._attr_name = f"{iface_uc(interface_name)} — LINK"
 
     @property
     def is_on(self) -> bool | None:

@@ -33,9 +33,10 @@ class FortigateEntity(CoordinatorEntity[FortigateCoordinator]):
         host = self.coordinator.client.host
         port = self.coordinator.client.port
         uid = self._config_entry.unique_id or self._config_entry.entry_id
+        host_label = str(results.get("hostname") or serial).upper()
         return {
             "identifiers": {(DOMAIN, uid)},
-            "name": results.get("hostname", serial),
+            "name": host_label,
             "manufacturer": "Fortinet",
             "model": results.get("model") or results.get("model_name") or "FortiGate",
             "sw_version": web.get("version"),
