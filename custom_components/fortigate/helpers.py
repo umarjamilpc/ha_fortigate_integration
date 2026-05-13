@@ -110,6 +110,38 @@ def iter_sdwan_health_members(results: Any) -> list[tuple[str, dict[str, Any]]]:
     return found
 
 
+def pick_sdwan_block_for_interface(
+    members: dict[str, Any], interface_name: str
+) -> tuple[str, dict[str, Any]] | None:
+    """Pick one SD-WAN health leaf whose slug references *interface_name* (e.g. WAN1 → …_wan1)."""
+    if not members or not interface_name:
+        return None
+    ikey = (
+        str(interface_name).replace(".", "_").replace("-", "_").strip().lower()
+    )
+    if not ikey:
+        return None
+    hits: list[tuple[str, dict[str, Any], int]] = []
+    for slug, block in members.items():
+        if not isinstance(block, dict):
+            continue
+        raw = str(slug).replace(".", "_")
+        parts = [p.lower() for p in raw.split("_") if p]
+        if ikey not in parts:
+            continue
+        score = 0
+        if parts and parts[-1] == ikey:
+            score = 2
+        elif parts and parts[0] == ikey:
+            score = 1
+        hits.append((str(slug), block, score))
+    if not hits:
+        return None
+    hits.sort(key=lambda x: (-x[2], len(x[0]), x[0].lower()))
+    slug, block, _ = hits[0]
+    return (slug, block)
+
+
 def sdwan_get_field(block: dict[str, Any], *field_names: str) -> Any:
     """Read field allowing hyphen vs underscore keys."""
     for field in field_names:

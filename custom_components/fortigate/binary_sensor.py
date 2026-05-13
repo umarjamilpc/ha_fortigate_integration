@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
-from .naming import iface_uc
+from .naming import if_entity_label
 
 
 async def async_setup_entry(
@@ -30,6 +30,9 @@ async def async_setup_entry(
         slug = iface_slug(if_name)
         entities.append(
             FortigateInterfaceLinkBinary(coordinator, entry, base_uid, if_name, slug)
+        )
+        entities.append(
+            FortigateInterfaceStatusBinary(coordinator, entry, base_uid, if_name, slug)
         )
     async_add_entities(entities)
 
@@ -55,7 +58,7 @@ class FortigateInterfaceLinkBinary(FortigateEntity, BinarySensorEntity):
         super().__init__(coordinator, entry)
         self._interface_name = interface_name
         self._attr_unique_id = f"{base_uid}_if_{interface_slug}_link"
-        self._attr_name = f"{iface_uc(interface_name)} — LINK"
+        self._attr_name = if_entity_label(interface_name, "LINK")
 
     @property
     def is_on(self) -> bool | None:
@@ -66,3 +69,36 @@ class FortigateInterfaceLinkBinary(FortigateEntity, BinarySensorEntity):
         if link is None:
             return None
         return bool(link)
+
+
+class FortigateInterfaceStatusBinary(FortigateEntity, BinarySensorEntity):
+    """Monitor administrative status (up/down) from system/interface — read-only."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    entity_description = BinarySensorEntityDescription(
+        key="status",
+    )
+
+    def __init__(
+        self,
+        coordinator: FortigateCoordinator,
+        entry: ConfigEntry,
+        base_uid: str,
+        interface_name: str,
+        interface_slug: str,
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._interface_name = interface_name
+        self._attr_unique_id = f"{base_uid}_if_{interface_slug}_status"
+        self._attr_name = if_entity_label(interface_name, "STATUS")
+
+    @property
+    def is_on(self) -> bool | None:
+        payload = self.coordinator.get_interface_payload(self._interface_name)
+        if not payload:
+            return None
+        status = (payload.get("status") or "").lower()
+        if not status:
+            return None
+        return status == "up"

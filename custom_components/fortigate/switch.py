@@ -17,7 +17,7 @@ from .const import CONF_ENABLE_INTERFACE_SWITCHES, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
 from .helpers import merge_entry_options
-from .naming import iface_uc
+from .naming import if_entity_label
 
 
 async def async_setup_entry(
@@ -58,7 +58,7 @@ class FortigateInterfaceAdminSwitch(FortigateEntity, SwitchEntity):
         super().__init__(coordinator, entry)
         self._interface_name = interface_name
         self._attr_unique_id = f"{base_uid}_if_{interface_slug}_admin"
-        self._attr_name = f"{iface_uc(interface_name)} — ADMIN"
+        self._attr_name = if_entity_label(interface_name, "INTERFACE")
         self._pending_target: bool | None = None
         self._pending_set_at: float = 0.0
 
