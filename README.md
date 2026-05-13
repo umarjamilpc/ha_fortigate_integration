@@ -29,9 +29,10 @@ After setup, use **Configure** on the integration card to set poll interval, whi
 
 ## Versioning
 
-Releases and tags follow **semantic versioning** (e.g. `v0.2.0`). The integration reports the same version in `manifest.json` for HACS.
+Releases and tags follow **semantic versioning** (e.g. `v0.2.1`). The integration reports the same version in `manifest.json` for HACS.
 
 ## Links
 
+- YAML entity list (REST + template pack, not part of HACS install): [docs/fortigate_yaml_entity_reference.yaml](docs/fortigate_yaml_entity_reference.yaml)
 - Repository: [umarjamilpc/ha_fortigate_integration](https://github.com/umarjamilpc/ha_fortigate_integration)
 - Issues: [github.com/umarjamilpc/ha_fortigate_integration/issues](https://github.com/umarjamilpc/ha_fortigate_integration/issues)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -43,6 +44,7 @@ class FortigateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=interval_sec),
         )
         self.client = client
+        self._iface_prev: dict[str, tuple[int, int, float]] = {}
 
     def get_tracked_interface_names(self) -> list[str]:
         """Interfaces that should have per-interface entities (from options + API)."""
@@ -60,6 +62,13 @@ class FortigateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         raw = self.data.get("interfaces", {}).get("results")
         results = normalize_interface_results(raw)
         return dict(results.get(name, {}))
+
+    def get_interface_rates(self, name: str) -> dict[str, float]:
+        """Latest computed RX/TX Mbps for an interface (from byte deltas)."""
+        if not self.data:
+            return {}
+        rates: dict[str, dict[str, float]] = self.data.get("interface_rates") or {}
+        return dict(rates.get(name, {}))
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
@@ -81,9 +90,41 @@ class FortigateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except FortigateApiError:
                 sdwan = None
 
+        results_norm = normalize_interface_results(interfaces.get("results"))
+        scope = interfaces_in_scope(results_norm, opts)
+        scope_set = set(scope)
+        for stale in list(self._iface_prev.keys()):
+            if stale not in scope_set:
+                del self._iface_prev[stale]
+
+        interface_rates: dict[str, dict[str, float]] = {}
+        now = time.monotonic()
+        for name in scope:
+            payload = results_norm.get(name) or {}
+            try:
+                rx = int(payload.get("rx_bytes") or 0)
+                tx = int(payload.get("tx_bytes") or 0)
+            except (TypeError, ValueError):
+                self._iface_prev.pop(name, None)
+                continue
+            prev = self._iface_prev.get(name)
+            if prev is not None:
+                prx, ptx, pt = prev
+                if rx >= prx and tx >= ptx:
+                    dt = now - pt
+                    if dt > 0.001:
+                        drx = rx - prx
+                        dtx = tx - ptx
+                        interface_rates[name] = {
+                            "rx_mbps": min(9999.0, drx * 8.0 / 1_000_000.0 / dt),
+                            "tx_mbps": min(9999.0, dtx * 8.0 / 1_000_000.0 / dt),
+                        }
+            self._iface_prev[name] = (rx, tx, now)
+
         return {
             "web_ui": web_ui,
             "interfaces": interfaces,
             "resources": resources,
             "sdwan": sdwan,
+            "interface_rates": interface_rates,
         }

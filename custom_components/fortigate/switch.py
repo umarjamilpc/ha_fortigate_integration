@@ -16,23 +16,24 @@ from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
 from .helpers import merge_entry_options
 
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    opts = merge_entry_options(entry)
-    if not opts.get(CONF_ENABLE_INTERFACE_SWITCHES):
-        return
-
     coordinator: FortigateCoordinator = hass.data[DOMAIN][entry.entry_id]
     base_uid = entry.unique_id or entry.entry_id
+    opts = merge_entry_options(entry)
     entities: list[SwitchEntity] = []
-    for if_name in coordinator.get_tracked_interface_names():
-        slug = iface_slug(if_name)
-        entities.append(
-            FortigateInterfaceAdminSwitch(coordinator, entry, base_uid, if_name, slug)
-        )
+    if opts.get(CONF_ENABLE_INTERFACE_SWITCHES):
+        for if_name in coordinator.get_tracked_interface_names():
+            slug = iface_slug(if_name)
+            entities.append(
+                FortigateInterfaceAdminSwitch(
+                    coordinator, entry, base_uid, if_name, slug
+                )
+            )
     async_add_entities(entities)
 
 

@@ -1,0 +1,149 @@
+# =============================================================================
+# FortiGate — entity ID reference (DO NOT include from configuration.yaml)
+# This file is documentation only. Home Assistant ignores it unless you
+# mistakenly add it under a key that loads arbitrary YAML.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# configuration.yaml (snippet) — required includes
+# -----------------------------------------------------------------------------
+# rest_command: !include fortigate_rest.yaml
+# sensor: !include fortigate_sensor.yaml
+# template: !include fortigate_template.yaml
+#
+# recorder: exclude large REST sensors (optional, recommended)
+#   - sensor.fortigate_resource_usage
+#   - sensor.fortigate_interface_stats
+#   - sensor.fortigate_sdwan_health
+#   - sensor.fortigate_web_ui_state
+
+# -----------------------------------------------------------------------------
+# REST platform sensors (fortigate_sensor.yaml)
+# -----------------------------------------------------------------------------
+rest_sensors:
+  - sensor.fortigate_interface_stats
+  - sensor.fortigate_sdwan_health
+  - sensor.fortigate_web_ui_state
+  - sensor.fortigate_resource_usage
+
+# -----------------------------------------------------------------------------
+# Derivative sensors (fortigate_sensor.yaml) — bytes/sec for Mbps templates
+# -----------------------------------------------------------------------------
+derivative_sensors:
+  - sensor.wan1_rx_bytes_per_sec
+  - sensor.wan1_tx_bytes_per_sec
+  - sensor.wan2_rx_bytes_per_sec
+  - sensor.wan2_tx_bytes_per_sec
+  - sensor.internal6_rx_bytes_per_sec
+  - sensor.internal6_tx_bytes_per_sec
+
+# -----------------------------------------------------------------------------
+# Template sensors — bytes (fortigate_template.yaml)
+# -----------------------------------------------------------------------------
+template_sensors_bytes:
+  - sensor.fortigate_wan1_rx_bytes
+  - sensor.fortigate_wan1_tx_bytes
+  - sensor.fortigate_wan2_rx_bytes
+  - sensor.fortigate_wan2_tx_bytes
+  - sensor.fortigate_internal6_rx_bytes
+  - sensor.fortigate_internal6_tx_bytes
+
+# -----------------------------------------------------------------------------
+# Template sensors — link status text (up/down/unknown)
+# -----------------------------------------------------------------------------
+template_sensors_link_status:
+  - sensor.fortigate_wan1_status
+  - sensor.fortigate_wan2_status
+  - sensor.fortigate_internal6_status
+
+# -----------------------------------------------------------------------------
+# Template sensors — bandwidth Mbps
+# -----------------------------------------------------------------------------
+template_sensors_mbps:
+  - sensor.wan1_download_mbps
+  - sensor.wan1_upload_mbps
+  - sensor.wan2_download_mbps
+  - sensor.wan2_upload_mbps
+  - sensor.internal6_download_mbps
+  - sensor.internal6_upload_mbps
+
+# -----------------------------------------------------------------------------
+# Template sensors — SD-WAN
+# -----------------------------------------------------------------------------
+template_sensors_sdwan:
+  - sensor.fortigate_wan1_latency
+  - sensor.fortigate_wan1_jitter
+  - sensor.fortigate_wan1_packet_loss
+  - sensor.fortigate_wan1_sdwan_status
+  - sensor.fortigate_wan2_latency
+  - sensor.fortigate_wan2_jitter
+  - sensor.fortigate_wan2_packet_loss
+  - sensor.fortigate_wan2_sdwan_status
+
+# -----------------------------------------------------------------------------
+# Template sensors — system
+# -----------------------------------------------------------------------------
+template_sensors_system:
+  - sensor.fortigate_uptime
+  - sensor.fortigate_firmware_version
+  - sensor.fortigate_session_count
+  - sensor.fortigate_cpu_usage
+  - sensor.fortigate_memory_usage
+  - sensor.fortigate_spu_usage
+  - sensor.fortigate_nturbo_usage
+
+# -----------------------------------------------------------------------------
+# Template binary sensors — physical link
+# -----------------------------------------------------------------------------
+template_binary_sensors:
+  - binary_sensor.wan1_link
+  - binary_sensor.wan2_link
+  - binary_sensor.internal6_link
+
+# -----------------------------------------------------------------------------
+# Template switches — administrative up/down (calls rest_command)
+# -----------------------------------------------------------------------------
+template_switches:
+  - switch.wan1_switch
+  - switch.wan2_switch
+  - switch.internal6_switch
+
+# -----------------------------------------------------------------------------
+# REST commands / services (fortigate_rest.yaml) — not entities; call as actions
+# -----------------------------------------------------------------------------
+rest_command_services:
+  - rest_command.fortigate_wan1_disable
+  - rest_command.fortigate_wan1_enable
+  - rest_command.fortigate_wan2_disable
+  - rest_command.fortigate_wan2_enable
+  - rest_command.fortigate_internal6_disable
+  - rest_command.fortigate_internal6_enable
+
+# -----------------------------------------------------------------------------
+# secrets.yaml keys (see secrets.example.yaml) — never commit real secrets
+# -----------------------------------------------------------------------------
+secret_keys:
+  - fortigate_url_monitor_interface
+  - fortigate_url_monitor_sdwan_health
+  - fortigate_url_monitor_web_ui_state
+  - fortigate_url_monitor_resource_usage
+  - fortigate_url_cmdb_interface_wan1
+  - fortigate_url_cmdb_interface_wan2
+  - fortigate_url_cmdb_interface_internal6
+
+# -----------------------------------------------------------------------------
+# HACS custom integration (fortigate) — entity_id pattern (per appliance)
+# -----------------------------------------------------------------------------
+# Device name = FortiGate hostname. Examples (suffix after device slug varies):
+#   sensor.<hostname>_firmware
+#   sensor.<hostname>_cpu_usage
+#   sensor.<hostname>_memory_usage
+#   sensor.<hostname>_sessions
+#   sensor.<hostname>_npu_sessions
+#   sensor.<hostname>_nturbo_sessions
+#   sensor.<hostname>_sdwan_health
+#   Per interface: "<ifname> RX bytes", "<ifname> TX bytes", "<ifname> RX Mbps",
+#   "<ifname> TX Mbps", "<ifname> link", "<ifname> administrative status"
+# Check: Settings → Devices & services → FortiGate → device → Entities.
+
+hacs_integration_domain: fortigate

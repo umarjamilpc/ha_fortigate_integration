@@ -34,6 +34,8 @@ async def async_setup_entry(
         FortigateCpuSensor(coordinator, entry, base_uid),
         FortigateMemorySensor(coordinator, entry, base_uid),
         FortigateSessionsSensor(coordinator, entry, base_uid),
+        FortigateNpuSessionsSensor(coordinator, entry, base_uid),
+        FortigateNturboSessionsSensor(coordinator, entry, base_uid),
     ]
     if opts.get(CONF_ENABLE_SDWAN_SENSOR):
         entities.append(FortigateSdwanSensor(coordinator, entry, base_uid))
@@ -48,6 +50,16 @@ async def async_setup_entry(
         entities.append(
             FortigateInterfaceCounterSensor(
                 coordinator, entry, base_uid, if_name, slug, "tx_bytes", "TX bytes"
+            )
+        )
+        entities.append(
+            FortigateInterfaceMbpsSensor(
+                coordinator, entry, base_uid, if_name, slug, "rx_mbps", "RX Mbps"
+            )
+        )
+        entities.append(
+            FortigateInterfaceMbpsSensor(
+                coordinator, entry, base_uid, if_name, slug, "tx_mbps", "TX Mbps"
             )
         )
 
@@ -173,6 +185,64 @@ class FortigateSessionsSensor(FortigateEntity, SensorEntity):
         return int(cur) if cur is not None else None
 
 
+class FortigateNpuSessionsSensor(FortigateEntity, SensorEntity):
+    """NPU / hardware offload session count (if reported by firmware)."""
+
+    entity_description = SensorEntityDescription(
+        key="npu_sessions",
+        name="NPU sessions",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+    )
+
+    def __init__(
+        self, coordinator: FortigateCoordinator, entry: ConfigEntry, base_uid: str
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{base_uid}_npu_sessions"
+        self._attr_suggested_display_precision = 0
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        res = self.coordinator.data.get("resources", {}).get("results") or {}
+        npu = res.get("npu_session") or []
+        if not npu:
+            return None
+        cur = npu[0].get("current")
+        return int(cur) if cur is not None else None
+
+
+class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
+    """nTurbo session count (if reported by firmware)."""
+
+    entity_description = SensorEntityDescription(
+        key="nturbo_sessions",
+        name="nTurbo sessions",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+    )
+
+    def __init__(
+        self, coordinator: FortigateCoordinator, entry: ConfigEntry, base_uid: str
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{base_uid}_nturbo_sessions"
+        self._attr_suggested_display_precision = 0
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        res = self.coordinator.data.get("resources", {}).get("results") or {}
+        nt = res.get("nturbo_session") or []
+        if not nt:
+            return None
+        cur = nt[0].get("current")
+        return int(cur) if cur is not None else None
+
+
 class FortigateSdwanSensor(FortigateEntity, SensorEntity):
     """SD-WAN health-check summary (disable in options if unused)."""
 
@@ -201,6 +271,40 @@ class FortigateSdwanSensor(FortigateEntity, SensorEntity):
         if isinstance(results, list):
             return len(results)
         return "ok"
+
+
+class FortigateInterfaceMbpsSensor(FortigateEntity, SensorEntity):
+    """Per-interface throughput from byte counter deltas (Mbps)."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = "Mbps"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
+
+    def __init__(
+        self,
+        coordinator: FortigateCoordinator,
+        entry: ConfigEntry,
+        base_uid: str,
+        interface_name: str,
+        interface_slug: str,
+        rate_key: str,
+        short_label: str,
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._interface_name = interface_name
+        self._rate_key = rate_key
+        self._attr_unique_id = f"{base_uid}_if_{interface_slug}_{rate_key}"
+        self._attr_name = f"{interface_name} {short_label}"
+
+    @property
+    def native_value(self) -> float | None:
+        rates = self.coordinator.get_interface_rates(self._interface_name)
+        val = rates.get(self._rate_key)
+        if val is None:
+            return None
+        return round(float(val), 2)
 
 
 class FortigateInterfaceCounterSensor(FortigateEntity, SensorEntity):
