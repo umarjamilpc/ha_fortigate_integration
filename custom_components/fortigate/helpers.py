@@ -82,6 +82,20 @@ def interface_monitor_admin_up(
     return True if assume_up_if_absent else None
 
 
+def interface_status_binary_is_on(payload: dict[str, Any] | None) -> bool | None:
+    """Operational line for *WANx STATUS* binary — matches legacy YAML: ``link`` → up/down.
+
+    FortiOS monitor often omits string ``status`` / boolean ``up``; the REST template used
+    ``results.<if>.link`` only. When ``link`` is absent, fall back to :func:`interface_monitor_admin_up`.
+    """
+    if not isinstance(payload, dict) or not payload:
+        return None
+    link = payload.get("link")
+    if link is not None:
+        return bool(link)
+    return interface_monitor_admin_up(payload)
+
+
 def normalize_interface_results(raw: Any) -> dict[str, dict[str, Any]]:
     """Return interface name -> payload from monitor/system/interface ``results``."""
     if isinstance(raw, dict):

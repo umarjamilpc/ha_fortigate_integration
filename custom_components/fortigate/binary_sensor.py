@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
-from .helpers import interface_monitor_admin_up
+from .helpers import interface_status_binary_is_on
 from .naming import if_entity_label
 
 
@@ -73,7 +73,7 @@ class FortigateInterfaceLinkBinary(FortigateEntity, BinarySensorEntity):
 
 
 class FortigateInterfaceStatusBinary(FortigateEntity, BinarySensorEntity):
-    """Monitor administrative status (up/down) from system/interface — read-only."""
+    """Operational up/down from monitor ``link`` (same signal as legacy *WANx Status* templates)."""
 
     _attr_has_entity_name = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -97,4 +97,4 @@ class FortigateInterfaceStatusBinary(FortigateEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         payload = self.coordinator.get_interface_payload(self._interface_name)
-        return interface_monitor_admin_up(payload)
+        return interface_status_binary_is_on(payload)
