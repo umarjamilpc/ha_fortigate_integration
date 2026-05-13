@@ -60,3 +60,60 @@ def interfaces_in_scope(
         selected = [selected]
     selected_set = {str(s) for s in selected}
     return [n for n in names if n in selected_set]
+
+
+def _sdwan_slug(path: str) -> str:
+    return path.replace(".", "_").replace("-", "_").replace(" ", "_").lower()
+
+
+def _sdwan_leaf_candidate(node: dict[str, Any]) -> bool:
+    """True if dict looks like SD-WAN health metrics (not a pure branch of nested dicts)."""
+    if not node:
+        return False
+    if all(isinstance(v, dict) for v in node.values()):
+        return False
+    keys_lower = {str(k).lower() for k in node}
+    markers = {
+        "latency",
+        "jitter",
+        "packet_loss",
+        "packet-loss",
+        "status",
+        "state",
+        "sla",
+    }
+    if keys_lower & markers:
+        return True
+    return any("loss" in str(k).lower() for k in node)
+
+
+def iter_sdwan_health_members(results: Any) -> list[tuple[str, dict[str, Any]]]:
+    """Depth-first walk of ``results``; yield (stable_slug, leaf dict)."""
+    found: list[tuple[str, dict[str, Any]]] = []
+
+    def walk(node: Any, path: list[str]) -> None:
+        if isinstance(node, dict):
+            if path and _sdwan_leaf_candidate(node):
+                found.append((_sdwan_slug("_".join(path)), node))
+                return
+            for key, val in node.items():
+                if isinstance(val, dict):
+                    walk(val, path + [str(key)])
+                elif isinstance(val, list):
+                    for idx, item in enumerate(val):
+                        walk(item, path + [str(key), str(idx)])
+        elif isinstance(node, list):
+            for idx, item in enumerate(node):
+                walk(item, path + [str(idx)])
+
+    walk(results, [])
+    return found
+
+
+def sdwan_get_field(block: dict[str, Any], *field_names: str) -> Any:
+    """Read field allowing hyphen vs underscore keys."""
+    for field in field_names:
+        for key in (field, field.replace("_", "-"), field.replace("-", "_")):
+            if key in block:
+                return block[key]
+    return None

@@ -18,7 +18,12 @@ from .api import (
     FortigateConnectionError,
 )
 from .const import CONF_ENABLE_SDWAN_SENSOR, CONF_SCAN_INTERVAL, DOMAIN
-from .helpers import interfaces_in_scope, merge_entry_options, normalize_interface_results
+from .helpers import (
+    interfaces_in_scope,
+    iter_sdwan_health_members,
+    merge_entry_options,
+    normalize_interface_results,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +75,14 @@ class FortigateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         rates: dict[str, dict[str, float]] = self.data.get("interface_rates") or {}
         return dict(rates.get(name, {}))
 
+    def get_sdwan_member_block(self, slug: str) -> dict[str, Any]:
+        """Parsed SD-WAN health leaf for one member (slug from ``iter_sdwan_health_members``)."""
+        if not self.data:
+            return {}
+        members: dict[str, Any] = self.data.get("sdwan_members") or {}
+        block = members.get(slug)
+        return dict(block) if isinstance(block, dict) else {}
+
     async def _async_update_data(self) -> dict[str, Any]:
         try:
             web_ui = await self.client.validate()
@@ -89,6 +102,11 @@ class FortigateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 sdwan = await self.client.get_monitor_sdwan_health()
             except FortigateApiError:
                 sdwan = None
+
+        sdwan_members: dict[str, dict[str, Any]] = {}
+        if sdwan:
+            for slug, block in iter_sdwan_health_members(sdwan.get("results")):
+                sdwan_members[slug] = block
 
         results_norm = normalize_interface_results(interfaces.get("results"))
         scope = interfaces_in_scope(results_norm, opts)
@@ -126,5 +144,6 @@ class FortigateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "interfaces": interfaces,
             "resources": resources,
             "sdwan": sdwan,
+            "sdwan_members": sdwan_members,
             "interface_rates": interface_rates,
         }

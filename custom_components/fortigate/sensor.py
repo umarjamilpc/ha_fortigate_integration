@@ -17,7 +17,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_ENABLE_SDWAN_SENSOR, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
-from .helpers import merge_entry_options
+from .helpers import merge_entry_options, sdwan_get_field
+
+# (internal_field, title fragment, unit, decimals)
+SDWAN_NUMERIC_SPECS: tuple[tuple[str, str, str | None, int], ...] = (
+    ("latency", "latency", "ms", 2),
+    ("jitter", "jitter", "ms", 2),
+    ("packet_loss", "packet loss", PERCENTAGE, 2),
+    ("sla", "SLA", None, 0),
+)
 
 
 async def async_setup_entry(
@@ -37,21 +45,9 @@ async def async_setup_entry(
         FortigateNpuSessionsSensor(coordinator, entry, base_uid),
         FortigateNturboSessionsSensor(coordinator, entry, base_uid),
     ]
-    if opts.get(CONF_ENABLE_SDWAN_SENSOR):
-        entities.append(FortigateSdwanSensor(coordinator, entry, base_uid))
 
     for if_name in coordinator.get_tracked_interface_names():
         slug = iface_slug(if_name)
-        entities.append(
-            FortigateInterfaceCounterSensor(
-                coordinator, entry, base_uid, if_name, slug, "rx_bytes", "RX bytes"
-            )
-        )
-        entities.append(
-            FortigateInterfaceCounterSensor(
-                coordinator, entry, base_uid, if_name, slug, "tx_bytes", "TX bytes"
-            )
-        )
         entities.append(
             FortigateInterfaceMbpsSensor(
                 coordinator, entry, base_uid, if_name, slug, "rx_mbps", "RX Mbps"
@@ -62,6 +58,42 @@ async def async_setup_entry(
                 coordinator, entry, base_uid, if_name, slug, "tx_mbps", "TX Mbps"
             )
         )
+
+    if opts.get(CONF_ENABLE_SDWAN_SENSOR):
+        members = (coordinator.data or {}).get("sdwan_members") or {}
+        for member_slug, block in members.items():
+            if not isinstance(block, dict):
+                continue
+            for field_key, title_frag, unit, decimals in SDWAN_NUMERIC_SPECS:
+                if field_key == "packet_loss":
+                    raw = sdwan_get_field(block, "packet_loss", "packet-loss")
+                    uid_field = "packet_loss"
+                else:
+                    raw = sdwan_get_field(block, field_key)
+                    uid_field = field_key
+                if raw is None:
+                    continue
+                lookup_names: tuple[str, ...] = (
+                    ("packet_loss", "packet-loss")
+                    if field_key == "packet_loss"
+                    else (field_key,)
+                )
+                entities.append(
+                    FortigateSdwanNumericSensor(
+                        coordinator,
+                        entry,
+                        base_uid,
+                        member_slug,
+                        uid_field,
+                        lookup_names,
+                        title_frag,
+                        unit,
+                        decimals,
+                    )
+                )
+            entities.append(
+                FortigateSdwanRawSensor(coordinator, entry, base_uid, member_slug)
+            )
 
     async_add_entities(entities)
 
@@ -243,38 +275,90 @@ class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
         return int(cur) if cur is not None else None
 
 
-class FortigateSdwanSensor(FortigateEntity, SensorEntity):
-    """SD-WAN health-check summary (disable in options if unused)."""
+class FortigateSdwanNumericSensor(FortigateEntity, SensorEntity):
+    """One numeric SD-WAN health metric (latency, jitter, loss, SLA, …)."""
 
-    entity_description = SensorEntityDescription(
-        key="sdwan_health",
-        name="SD-WAN health",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    )
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, coordinator: FortigateCoordinator, entry: ConfigEntry, base_uid: str
+        self,
+        coordinator: FortigateCoordinator,
+        entry: ConfigEntry,
+        base_uid: str,
+        member_slug: str,
+        uid_field: str,
+        lookup_names: tuple[str, ...],
+        title_fragment: str,
+        unit: str | None,
+        decimals: int,
     ) -> None:
         super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{base_uid}_sdwan_health"
+        self._member_slug = member_slug
+        self._lookup_names = lookup_names
+        self._decimals = decimals
+        self._attr_unique_id = f"{base_uid}_sdwan_{member_slug}_{uid_field.replace('-', '_')}"
+        self._attr_name = f"SD-WAN {member_slug} {title_fragment}"
+        self._attr_native_unit_of_measurement = unit
+        if decimals:
+            self._attr_suggested_display_precision = decimals
 
     @property
-    def native_value(self) -> int | str | None:
-        if not self.coordinator.data:
+    def native_value(self) -> float | int | None:
+        block = self.coordinator.get_sdwan_member_block(self._member_slug)
+        raw = sdwan_get_field(block, *self._lookup_names)
+        if raw is None:
             return None
-        sd = self.coordinator.data.get("sdwan")
-        if not sd:
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
             return None
-        results = sd.get("results")
-        if isinstance(results, dict):
-            return len(results)
-        if isinstance(results, list):
-            return len(results)
-        return "ok"
+        if self._decimals:
+            return round(val, self._decimals)
+        return int(val)
+
+
+class FortigateSdwanRawSensor(FortigateEntity, SensorEntity):
+    """All scalar SD-WAN health fields for one member (for dashboards / debugging)."""
+
+    _attr_has_entity_name = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: FortigateCoordinator,
+        entry: ConfigEntry,
+        base_uid: str,
+        member_slug: str,
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._member_slug = member_slug
+        self._attr_unique_id = f"{base_uid}_sdwan_{member_slug}_raw"
+        self._attr_name = f"SD-WAN {member_slug} data"
+
+    @property
+    def native_value(self) -> str | None:
+        block = self.coordinator.get_sdwan_member_block(self._member_slug)
+        if not block:
+            return None
+        st = sdwan_get_field(block, "status", "state")
+        return str(st) if st is not None else "ok"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        block = self.coordinator.get_sdwan_member_block(self._member_slug)
+        if not block:
+            return {}
+        out: dict[str, Any] = {}
+        for k, v in block.items():
+            if isinstance(v, (str, int, float, bool)) or v is None:
+                out[str(k)] = v
+        return out
 
 
 class FortigateInterfaceMbpsSensor(FortigateEntity, SensorEntity):
-    """Per-interface throughput from byte counter deltas (Mbps)."""
+    """Per-interface throughput from byte counter deltas (Mbps only; no byte entities)."""
 
     _attr_has_entity_name = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -305,59 +389,3 @@ class FortigateInterfaceMbpsSensor(FortigateEntity, SensorEntity):
         if val is None:
             return None
         return round(float(val), 2)
-
-
-class FortigateInterfaceCounterSensor(FortigateEntity, SensorEntity):
-    """Per-interface byte counter from monitor (TOTAL_INCREASING for HA statistics)."""
-
-    _attr_has_entity_name = False
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(
-        self,
-        coordinator: FortigateCoordinator,
-        entry: ConfigEntry,
-        base_uid: str,
-        interface_name: str,
-        interface_slug: str,
-        field: str,
-        short_label: str,
-    ) -> None:
-        super().__init__(coordinator, entry)
-        self._interface_name = interface_name
-        self._field = field
-        self._attr_unique_id = f"{base_uid}_if_{interface_slug}_{field}"
-        self._attr_name = f"{interface_name} {short_label}"
-        self._attr_native_unit_of_measurement = "B"
-        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_suggested_display_precision = 0
-
-    @property
-    def native_value(self) -> int | None:
-        payload = self.coordinator.get_interface_payload(self._interface_name)
-        val = payload.get(self._field)
-        if val is None:
-            return None
-        try:
-            return int(val)
-        except (TypeError, ValueError):
-            return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        payload = self.coordinator.get_interface_payload(self._interface_name)
-        if not payload:
-            return {}
-        return {
-            k: payload[k]
-            for k in (
-                "speed",
-                "duplex",
-                "ip",
-                "mask",
-                "status",
-                "link",
-                "type",
-            )
-            if k in payload
-        }
