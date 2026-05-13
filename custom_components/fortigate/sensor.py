@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfInformation
+from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -49,16 +49,6 @@ async def async_setup_entry(
 
     for if_name in coordinator.get_tracked_interface_names():
         slug = iface_slug(if_name)
-        entities.append(
-            FortigateInterfaceBytesSensor(
-                coordinator, entry, base_uid, if_name, slug, "rx_bytes"
-            )
-        )
-        entities.append(
-            FortigateInterfaceBytesSensor(
-                coordinator, entry, base_uid, if_name, slug, "tx_bytes"
-            )
-        )
         entities.append(
             FortigateInterfaceMbpsSensor(
                 coordinator, entry, base_uid, if_name, slug, "rx_mbps"
@@ -393,46 +383,6 @@ class FortigateInterfaceSdwanStatusSensor(FortigateEntity, SensorEntity):
             if isinstance(v, (str, int, float, bool)) or v is None:
                 out[str(k)] = v
         return out
-
-
-class FortigateInterfaceBytesSensor(FortigateEntity, SensorEntity):
-    """RX/TX byte counters from monitor (total increasing)."""
-
-    _attr_has_entity_name = False
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_native_unit_of_measurement = UnitOfInformation.BYTES
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
-
-    def __init__(
-        self,
-        coordinator: FortigateCoordinator,
-        entry: ConfigEntry,
-        base_uid: str,
-        interface_name: str,
-        interface_slug: str,
-        counter_key: str,
-    ) -> None:
-        super().__init__(coordinator, entry)
-        self._interface_name = interface_name
-        self._counter_key = counter_key
-        self._attr_unique_id = f"{base_uid}_if_{interface_slug}_{counter_key}"
-        if counter_key == "rx_bytes":
-            self._attr_name = if_entity_label(interface_name, "DOWNLOAD BYTES")
-        else:
-            self._attr_name = if_entity_label(interface_name, "UPLOAD BYTES")
-
-    @property
-    def native_value(self) -> int | None:
-        payload = self.coordinator.get_interface_payload(self._interface_name)
-        if not payload:
-            return None
-        raw = payload.get(self._counter_key)
-        if raw is None:
-            return None
-        try:
-            return int(raw)
-        except (TypeError, ValueError):
-            return None
 
 
 class FortigateInterfaceMbpsSensor(FortigateEntity, SensorEntity):
