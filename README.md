@@ -22,6 +22,11 @@ Create a **REST API** administrator (System → Administrators), assign a read-o
 
 After setup, use **Configure** on the integration card to set poll interval, which interfaces to expose (all vs selected), SD-WAN polling, and optional CMDB interface switches.
 
+## Security
+
+- This repository contains **no** Home Assistant `secrets.yaml` and **no** hard-coded FortiGate tokens. The token is stored only in the Home Assistant config entry after you add the integration.
+- Never commit your full HA `config/` folder into this repo; use `secrets.yaml` locally and keep it out of Git.
+
 ## Versioning
 
 Releases and tags follow **semantic versioning** (e.g. `v0.2.0`). The integration reports the same version in `manifest.json` for HACS.

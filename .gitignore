@@ -7,3 +7,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# Never add Home Assistant secrets or full config snapshots into this repo
+secrets.yaml
+*.pem
+.env
