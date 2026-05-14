@@ -6,8 +6,9 @@
 
 Custom integration for **Fortinet FortiGate** firewalls using the FortiOS **JSON REST API** (token authentication, VDOM-aware, dynamic interfaces, optional SD-WAN and CMDB interface controls).
 
-**Install via [HACS](https://www.hacs.xyz/)** (recommended) or manual copy of `custom_components/fortigate`.  
-After installation, Home Assistant shows the Fortinet **icon** on the integration card (`custom_components/fortigate/icon.png`).
+**Install via [HACS](https://www.hacs.xyz/)** (recommended) or manual copy of `custom_components/fortigate`.
+
+HACS and Home Assistant expect brand images under **`custom_components/fortigate/brand/`** (see [HACS integration requirements](https://hacs.xyz/docs/publish/integration/) and [Home Assistant brand images](https://developers.home-assistant.io/docs/creating_integration_file_structure#brand-images---brand)). This repository ships **`brand/icon.png`** (and `brand/dark_icon.png`, `brand/logo.png`) so the Fortinet mark can appear in the HACS list and in **Settings → Devices & services** after installation. A legacy **`icon.png`** next to `manifest.json` is kept for compatibility with older layouts.
 
 ---
 
@@ -118,25 +119,10 @@ If a call is denied, FortiGate returns **401/403** — widen read access first, 
 
 1. Copy the folder `custom_components/fortigate` from this repository into your Home Assistant configuration directory so you have:
 
-   `config/custom_components/fortigate/` (containing `manifest.json`, `icon.png`, and all `.py` files).
+   `config/custom_components/fortigate/` (including `manifest.json`, `brand/icon.png`, `icon.png`, and all `.py` files).
 
 2. Restart Home Assistant.
 3. Continue from **Part B — Step B4** above.
-
----
-
-## Security notes
-
-- This repository does **not** ship real tokens or `secrets.yaml`. Your API key lives only in the Home Assistant **config entry** after setup.
-- Do not commit your full `config/` tree to public Git hosting.
-- Prefer **read-only** profiles until you explicitly need CMDB **interface** writes for switches.
-
----
-
-## Versioning and releases
-
-- **Semantic versioning** in `manifest.json` (e.g. `0.4.3`).
-- GitHub **tags** and **Releases** match those versions for HACS updates.
 
 ---
 
