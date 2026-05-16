@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
 from typing import Any
+
+from homeassistant.util import dt as dt_util
 
 from homeassistant.config_entries import ConfigEntry
 
@@ -259,3 +263,48 @@ def sdwan_safe_attributes(block: dict[str, Any] | None) -> dict[str, Any]:
         else:
             out[str(k)] = str(v)[:4000]
     return out
+
+
+def parse_utc_last_reboot(web_ui: dict[str, Any]) -> float | None:
+    """Parse ``utc_last_reboot`` from monitor/web-ui/state (seconds since epoch)."""
+    if not web_ui:
+        return None
+    results = web_ui.get("results")
+    raw: Any = None
+    if isinstance(results, dict):
+        raw = results.get("utc_last_reboot")
+    if raw is None:
+        raw = web_ui.get("utc_last_reboot")
+    if raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        ts = float(raw)
+        if ts > 1e12:
+            return ts / 1000.0
+        return ts
+    if isinstance(raw, str):
+        s = raw.strip()
+        if re.fullmatch(r"[0-9]+\.?[0-9]*", s):
+            ts = float(s)
+            if ts > 1e12:
+                return ts / 1000.0
+            return ts
+        if len(s) >= 19:
+            try:
+                normalized = s[:19].replace("T", " ")
+                return datetime.strptime(normalized, "%Y-%m-%d %H:%M:%S").timestamp()
+            except ValueError:
+                pass
+            try:
+                return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                return None
+    return None
+
+
+def compute_uptime_seconds(reboot_ts: float) -> int | None:
+    """Seconds since last reboot; ``None`` if reboot time is in the future."""
+    uptime = int(dt_util.utcnow().timestamp() - reboot_ts)
+    if uptime < 0:
+        return None
+    return uptime

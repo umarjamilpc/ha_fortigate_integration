@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
@@ -13,12 +14,15 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import CONF_ENABLE_SDWAN_SENSOR, DOMAIN
 from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
 from .helpers import (
+    compute_uptime_seconds,
     merge_entry_options,
+    parse_utc_last_reboot,
     pick_sdwan_block_for_interface,
     sdwan_get_field,
     sdwan_primary_status_text,
@@ -61,6 +65,7 @@ async def async_setup_entry(
 
     entities: list[SensorEntity] = [
         FortigateFirmwareSensor(coordinator, entry, base_uid),
+        FortigateUptimeSensor(coordinator, entry, base_uid),
         FortigateCpuSensor(coordinator, entry, base_uid),
         FortigateMemorySensor(coordinator, entry, base_uid),
         FortigateSessionsSensor(coordinator, entry, base_uid),
@@ -160,6 +165,45 @@ class FortigateFirmwareSensor(FortigateEntity, SensorEntity):
             "build": web.get("build"),
             "model_number": results.get("model_number"),
             "vdom": web.get("vdom"),
+        }
+
+
+class FortigateUptimeSensor(FortigateEntity, SensorEntity):
+    """Uptime since last reboot from web-ui ``utc_last_reboot``."""
+
+    entity_description = SensorEntityDescription(
+        key="uptime",
+        name="UPTIME",
+        device_class=SensorDeviceClass.DURATION,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    )
+
+    def __init__(
+        self, coordinator: FortigateCoordinator, entry: ConfigEntry, base_uid: str
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{base_uid}_uptime"
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        web = self.coordinator.data.get("web_ui", {})
+        reboot_ts = parse_utc_last_reboot(web)
+        if reboot_ts is None:
+            return None
+        return compute_uptime_seconds(reboot_ts)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        if not self.coordinator.data:
+            return {}
+        web = self.coordinator.data.get("web_ui", {})
+        reboot_ts = parse_utc_last_reboot(web)
+        if reboot_ts is None:
+            return {}
+        return {
+            "last_reboot": dt_util.utc_from_timestamp(reboot_ts).isoformat(),
         }
 
 
