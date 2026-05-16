@@ -308,3 +308,11 @@ def compute_uptime_seconds(reboot_ts: float) -> int | None:
     if uptime < 0:
         return None
     return uptime
+
+
+def format_uptime(seconds: int) -> str:
+    """Human-readable uptime (e.g. ``1d 3h 38m``), matching legacy FortiGate templates."""
+    days, rem = divmod(seconds, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes = rem // 60
+    return f"{days}d {hours}h {minutes}m"

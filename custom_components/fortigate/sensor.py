@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
@@ -21,6 +20,7 @@ from .coordinator import FortigateCoordinator
 from .entity import FortigateEntity, iface_slug
 from .helpers import (
     compute_uptime_seconds,
+    format_uptime,
     merge_entry_options,
     parse_utc_last_reboot,
     pick_sdwan_block_for_interface,
@@ -169,12 +169,11 @@ class FortigateFirmwareSensor(FortigateEntity, SensorEntity):
 
 
 class FortigateUptimeSensor(FortigateEntity, SensorEntity):
-    """Uptime since last reboot from web-ui ``utc_last_reboot``."""
+    """Uptime since last reboot from web-ui ``utc_last_reboot`` (e.g. ``1d 3h 38m``)."""
 
     entity_description = SensorEntityDescription(
         key="uptime",
         name="UPTIME",
-        device_class=SensorDeviceClass.DURATION,
         entity_category=EntityCategory.DIAGNOSTIC,
     )
 
@@ -185,14 +184,17 @@ class FortigateUptimeSensor(FortigateEntity, SensorEntity):
         self._attr_unique_id = f"{base_uid}_uptime"
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> str | None:
         if not self.coordinator.data:
             return None
         web = self.coordinator.data.get("web_ui", {})
         reboot_ts = parse_utc_last_reboot(web)
         if reboot_ts is None:
             return None
-        return compute_uptime_seconds(reboot_ts)
+        seconds = compute_uptime_seconds(reboot_ts)
+        if seconds is None:
+            return None
+        return format_uptime(seconds)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -202,9 +204,13 @@ class FortigateUptimeSensor(FortigateEntity, SensorEntity):
         reboot_ts = parse_utc_last_reboot(web)
         if reboot_ts is None:
             return {}
-        return {
+        seconds = compute_uptime_seconds(reboot_ts)
+        attrs: dict[str, Any] = {
             "last_reboot": dt_util.utc_from_timestamp(reboot_ts).isoformat(),
         }
+        if seconds is not None:
+            attrs["uptime_seconds"] = seconds
+        return attrs
 
 
 class FortigateCpuSensor(FortigateEntity, SensorEntity):
