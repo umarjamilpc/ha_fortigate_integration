@@ -89,8 +89,9 @@ template_sensors_system:
   - sensor.fortigate_session_count
   - sensor.fortigate_cpu_usage
   - sensor.fortigate_memory_usage
-  - sensor.fortigate_spu_usage
-  - sensor.fortigate_nturbo_usage
+  # HACS integration (device slug = hostname): sensor.<hostname>_spu_sessions, etc.
+  - sensor.fortigate_spu_sessions
+  - sensor.fortigate_nturbo_sessions
 
 # -----------------------------------------------------------------------------
 # Template binary sensors — physical link

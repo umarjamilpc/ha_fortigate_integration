@@ -26,6 +26,21 @@ from .helpers import (
 )
 from .naming import if_entity_label
 
+
+def _resource_session_count(res: dict[str, Any], key: str) -> int | None:
+    """Parse FortiOS resource/usage session counter (``current`` is a count, not %)."""
+    items = res.get(key) or []
+    if not items:
+        return None
+    cur = items[0].get("current")
+    if cur is None:
+        return None
+    try:
+        return int(float(cur))
+    except (TypeError, ValueError):
+        return None
+
+
 # (internal_field, display metric name uppercase, unit, decimals)
 SDWAN_NUMERIC_SPECS: tuple[tuple[str, str, str | None, int], ...] = (
     ("latency", "LATENCY", "ms", 2),
@@ -224,20 +239,15 @@ class FortigateSessionsSensor(FortigateEntity, SensorEntity):
         if not self.coordinator.data:
             return None
         res = self.coordinator.data.get("resources", {}).get("results") or {}
-        sess = res.get("session") or []
-        if not sess:
-            return None
-        cur = sess[0].get("current")
-        return int(cur) if cur is not None else None
+        return _resource_session_count(res, "session")
 
 
 class FortigateSpuSessionsSensor(FortigateEntity, SensorEntity):
-    """SPU session offload usage from resource monitor (FortiOS `npu_session`; value is a percentage)."""
+    """SPU (NPU) offloaded session count from FortiOS ``npu_session`` resource monitor."""
 
     entity_description = SensorEntityDescription(
         key="spu_sessions",
         name="SPU SESSIONS",
-        native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -247,32 +257,22 @@ class FortigateSpuSessionsSensor(FortigateEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{base_uid}_spu_sessions"
-        self._attr_suggested_display_precision = 2
+        self._attr_suggested_display_precision = 0
 
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> int | None:
         if not self.coordinator.data:
             return None
         res = self.coordinator.data.get("resources", {}).get("results") or {}
-        npu = res.get("npu_session") or []
-        if not npu:
-            return None
-        cur = npu[0].get("current")
-        if cur is None:
-            return None
-        try:
-            return round(float(cur), 2)
-        except (TypeError, ValueError):
-            return None
+        return _resource_session_count(res, "npu_session")
 
 
 class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
-    """nTurbo session offload usage from resource monitor (percentage)."""
+    """nTurbo offloaded session count from FortiOS ``nturbo_session`` resource monitor."""
 
     entity_description = SensorEntityDescription(
         key="nturbo_sessions",
         name="NTURBO SESSIONS",
-        native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
     )
@@ -282,23 +282,14 @@ class FortigateNturboSessionsSensor(FortigateEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{base_uid}_nturbo_sessions"
-        self._attr_suggested_display_precision = 2
+        self._attr_suggested_display_precision = 0
 
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> int | None:
         if not self.coordinator.data:
             return None
         res = self.coordinator.data.get("resources", {}).get("results") or {}
-        nt = res.get("nturbo_session") or []
-        if not nt:
-            return None
-        cur = nt[0].get("current")
-        if cur is None:
-            return None
-        try:
-            return round(float(cur), 2)
-        except (TypeError, ValueError):
-            return None
+        return _resource_session_count(res, "nturbo_session")
 
 
 class FortigateSdwanNumericSensor(FortigateEntity, SensorEntity):

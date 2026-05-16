@@ -1,0 +1,375 @@
+title: FortiGate
+views:
+  - title: Overview
+    icon: mdi:view-dashboard
+    badges: []
+    card_mod:
+      style: |
+        #view view {
+          padding: 16px;
+          background: linear-gradient(160deg, rgba(10, 14, 22, 0.97) 0%, rgba(16, 24, 40, 0.97) 100%);
+        }
+    cards: []
+    background:
+      opacity: 100
+      alignment: center
+      size: cover
+      repeat: repeat
+      attachment: fixed
+      image:
+        media_content_id: media-source://image_upload/a1d326b07b8cfb9aba0eceadf36ddccc
+        media_content_type: image/jpeg
+        metadata:
+          title: blur-image.jpg
+          thumbnail: /api/image/serve/a1d326b07b8cfb9aba0eceadf36ddccc/256x256
+          media_class: image
+          children_media_class: null
+          navigateIds:
+            - {}
+            - media_content_type: app
+              media_content_id: media-source://image_upload
+    type: sections
+    theme: ios-dark-mode-dark-blue
+    subview: false
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: New section
+          - type: entities
+            title: ⏱ System
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_uptime
+                name: Uptime
+                icon: mdi:clock-outline
+              - entity: sensor.fortigate_firmware_version
+                name: Firmware
+                icon: mdi:chip
+              - entity: sensor.fortigate_sessions
+                name: Sessions
+                icon: mdi:connection
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: entities
+            title: 📊 Resource usage
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_cpu_usage
+                name: CPU
+                icon: mdi:chip
+              - entity: sensor.fortigate_memory_usage
+                name: Memory
+                icon: mdi:memory
+              - entity: sensor.fortigate_spu_sessions
+                name: SPU sessions
+                icon: mdi:chip
+              - entity: sensor.fortigate_nturbo_sessions
+                name: nTurbo sessions
+                icon: mdi:speedometer
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: entities
+            title: Link state
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.wan1_link
+                name: WAN1 Link
+              - entity: binary_sensor.wan2_link
+                name: WAN2 Link
+              - entity: binary_sensor.internal6_link
+                name: INTERNAL6 Link
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: markdown
+            content: '**SD-WAN Health**'
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.6) !important;
+                backdrop-filter: blur(10px); border-radius: 12px; border: 1px
+                solid rgba(200, 215, 235, 0.15); }
+
+                .markdown { padding: 12px 16px !important; color: rgba(200, 215,
+                235, 0.9); font-weight: 600; }
+            grid_options:
+              columns: 48
+              rows: auto
+          - type: entities
+            title: WAN1 Health
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_wan1_latency
+                name: Latency (ms)
+                icon: mdi:clock-outline
+              - entity: sensor.fortigate_wan1_jitter
+                name: Jitter (ms)
+                icon: mdi:chart-line-variant
+              - entity: sensor.fortigate_wan1_packet_loss
+                name: Packet Loss (%)
+                icon: mdi:package-variant
+              - entity: sensor.fortigate_wan1_sdwan_status
+                name: Status
+                icon: mdi:heart-pulse
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 24
+              rows: auto
+          - type: entities
+            title: WAN2 Health
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_wan2_latency
+                name: Latency (ms)
+                icon: mdi:clock-outline
+              - entity: sensor.fortigate_wan2_jitter
+                name: Jitter (ms)
+                icon: mdi:chart-line-variant
+              - entity: sensor.fortigate_wan2_packet_loss
+                name: Packet Loss (%)
+                icon: mdi:package-variant
+              - entity: sensor.fortigate_wan2_sdwan_status
+                name: Status
+                icon: mdi:heart-pulse
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 24
+              rows: auto
+          - type: entities
+            title: 🌐 WAN1
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_wan1_status
+                name: Status
+                icon: mdi:ethernet-cable
+              - entity: sensor.wan1_download_mbps
+                name: Download (Mbps)
+                icon: mdi:download-network
+              - entity: sensor.wan1_upload_mbps
+                name: Upload (Mbps)
+                icon: mdi:upload-network
+              - entity: switch.wan1_switch
+                name: Interface
+                icon: mdi:power
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: entities
+            title: 🌐 WAN2
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_wan2_status
+                name: Status
+                icon: mdi:ethernet-cable
+              - entity: sensor.wan2_download_mbps
+                name: Download (Mbps)
+                icon: mdi:download-network
+              - entity: sensor.wan2_upload_mbps
+                name: Upload (Mbps)
+                icon: mdi:upload-network
+              - entity: switch.wan2_switch
+                name: Interface
+                icon: mdi:power
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: entities
+            title: 🏠 INTERNAL6
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.fortigate_internal6_status
+                name: Status
+                icon: mdi:ethernet-cable
+              - entity: sensor.internal6_download_mbps
+                name: Download (Mbps)
+                icon: mdi:download-network
+              - entity: sensor.internal6_upload_mbps
+                name: Upload (Mbps)
+                icon: mdi:upload-network
+              - entity: switch.internal6_switch
+                name: Interface
+                icon: mdi:power
+            card_mod:
+              style: >
+                ha-card { background: rgba(18, 26, 38, 0.82) !important;
+                backdrop-filter: blur(14px); border-radius: 16px; border: 1px
+                solid rgba(200, 215, 235, 0.18); box-shadow: 0 8px 32px rgba(0,
+                0, 0, 0.35); }
+
+                .card-header { color: rgba(200, 215, 235, 0.9); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.12); }
+
+                .info { color: rgba(255, 255, 255, 0.85); }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: history-graph
+            title: 📊 WAN1 Traffic (Mbps) — 6h
+            hours_to_show: 6
+            entities:
+              - entity: sensor.wan1_download_mbps
+                name: WAN1 Download
+              - entity: sensor.wan1_upload_mbps
+                name: WAN1 Upload
+            card_mod:
+              style: >
+                ha-card {
+                  min-height: 220px;
+                  background: rgba(18, 26, 38, 0.82) !important;
+                  backdrop-filter: blur(14px);
+                  -webkit-backdrop-filter: blur(14px);
+                  border-radius: 16px;
+                  border: 1px solid rgba(200, 215, 235, 0.22);
+                  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(200, 215, 235, 0.06);
+                }
+
+                .card-header { color: rgba(200, 215, 235, 0.95); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.15);
+                padding: 12px 16px; }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: history-graph
+            title: 📊 WAN2 Traffic (Mbps) — 6h
+            hours_to_show: 6
+            entities:
+              - entity: sensor.wan2_download_mbps
+                name: WAN2 Download
+              - entity: sensor.wan2_upload_mbps
+                name: WAN2 Upload
+            card_mod:
+              style: >
+                ha-card {
+                  min-height: 220px;
+                  background: rgba(18, 26, 38, 0.82) !important;
+                  backdrop-filter: blur(14px);
+                  -webkit-backdrop-filter: blur(14px);
+                  border-radius: 16px;
+                  border: 1px solid rgba(200, 215, 235, 0.22);
+                  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(200, 215, 235, 0.06);
+                }
+
+                .card-header { color: rgba(200, 215, 235, 0.95); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.15);
+                padding: 12px 16px; }
+            grid_options:
+              columns: 16
+              rows: auto
+          - type: history-graph
+            title: 📊 INTERNAL6 Traffic (Mbps) — 6h
+            hours_to_show: 6
+            entities:
+              - entity: sensor.internal6_download_mbps
+                name: INTERNAL6 Download
+              - entity: sensor.internal6_upload_mbps
+                name: INTERNAL6 Upload
+            card_mod:
+              style: >
+                ha-card {
+                  min-height: 220px;
+                  background: rgba(18, 26, 38, 0.82) !important;
+                  backdrop-filter: blur(14px);
+                  -webkit-backdrop-filter: blur(14px);
+                  border-radius: 16px;
+                  border: 1px solid rgba(200, 215, 235, 0.22);
+                  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(200, 215, 235, 0.06);
+                }
+
+                .card-header { color: rgba(200, 215, 235, 0.95); font-weight:
+                600; border-bottom: 1px solid rgba(200, 215, 235, 0.15);
+                padding: 12px 16px; }
+            grid_options:
+              columns: 16
+              rows: auto
+        column_span: 4
+    header:
+      card:
+        type: markdown
+        content: |
+          ## 🛡️ FortiGate 60E — Network Control
+          *Live interfaces · SD-WAN health · System*
